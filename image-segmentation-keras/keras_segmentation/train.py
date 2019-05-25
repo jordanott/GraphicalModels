@@ -4,42 +4,49 @@ from .data_utils.data_loader import image_segmentation_generator , verify_segmen
 from .models import model_from_name
 import os
 import six
+from keras.callbacks import ModelCheckpoint
 
 def find_latest_checkpoint( checkpoints_path ):
 	ep = 0
 	r = None
 	while True:
 		if os.path.isfile( checkpoints_path + "." + str( ep )  ):
-			r = checkpoints_path + "." + str( ep ) 
+			r = checkpoints_path + "." + str( ep )
 		else:
-			return r 
+			return r
 
 		ep += 1
 
+def build_directory(path, current_path=''):
+    # iterate through folders in specifide path
+    for folder in path.split('/'):
+        current_path += folder +'/'
+        # if it doesn't exist build that director
+        if not os.path.exists(current_path):
+            os.mkdir(current_path)
 
 
-
-def train( model  , 
-		train_images  , 
-		train_annotations , 
-		input_height=None , 
-		input_width=None , 
+def train( model  ,
+		train_images  ,
+		train_annotations ,
+		input_height=None ,
+		input_width=None ,
 		n_classes=None,
 		verify_dataset=True,
-		checkpoints_path=None , 
-		epochs = 5,
+		checkpoints_path=None ,
+		epochs = 10,
 		batch_size = 2,
-		validate=False , 
-		val_images=None , 
+		validate=False ,
+		val_images=None ,
 		val_annotations=None ,
-		val_batch_size=2 , 
+		val_batch_size=2 ,
 		auto_resume_checkpoint=False ,
 		load_weights=None ,
 		steps_per_epoch=512,
-		optimizer_name='adadelta' 
+		optimizer_name='adadelta'
 	):
 
-
+	build_directory(checkpoints_path + model)
 	if  isinstance(model, six.string_types) : # check if user gives model name insteead of the model object
 		# create the model from the name
 		assert ( not n_classes is None ) , "Please provide the n_classes"
@@ -56,8 +63,8 @@ def train( model  ,
 
 
 	if validate:
-		assert not (  val_images is None ) 
-		assert not (  val_annotations is None ) 
+		assert not (  val_images is None )
+		assert not (  val_annotations is None )
 
 	if not optimizer_name is None:
 		model.compile(loss='categorical_crossentropy',
@@ -71,7 +78,7 @@ def train( model  ,
 			"input_height" : input_height ,
 			"input_width" : input_width ,
 			"output_height" : output_height ,
-			"output_width" : output_width 
+			"output_width" : output_width
 		}))
 
 	if ( not (load_weights is None )) and  len( load_weights ) > 0:
@@ -100,6 +107,7 @@ def train( model  ,
 		val_gen  = image_segmentation_generator( val_images , val_annotations ,  val_batch_size,  n_classes , input_height , input_width , output_height , output_width   )
 
 
+
 	if not validate:
 		for ep in range( epochs ):
 			print("Starting Epoch " , ep )
@@ -109,15 +117,8 @@ def train( model  ,
 				print("saved " , checkpoints_path + ".model." + str( ep ) )
 			print("Finished Epoch" , ep )
 	else:
-		for ep in range( epochs ):
-			print("Starting Epoch " , ep )
-			model.fit_generator( train_gen , steps_per_epoch  , validation_data=val_gen , validation_steps=200 ,  epochs=1 )
-			if not checkpoints_path is None:
-				model.save_weights( checkpoints_path + "." + str( ep )  )
-				print("saved " , checkpoints_path + ".model." + str( ep ) )
-			print("Finished Epoch" , ep )
-
-
-
-
-
+		checkpoint = ModelCheckpoint(checkpoints_path + model.model_name + '/model.h5')
+		history = model.fit_generator( train_gen , steps_per_epoch  , validation_data=val_gen , validation_steps=200 ,  epochs=epochs , callbacks=[checkpoint])
+		import pandas as pd
+		df = pd.DataFrame(history.history)
+		df.to_csv(checkpoints_path + model.model_name + '/training.csv')

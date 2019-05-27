@@ -36,7 +36,7 @@ def train( model  ,
 		checkpoints_path=None ,
 		epochs = 10,
 		batch_size = 2,
-		validate=False ,
+		validate=True ,
 		val_images=None ,
 		val_annotations=None ,
 		val_batch_size=2 ,
@@ -118,7 +118,7 @@ def train( model  ,
 			print("Finished Epoch" , ep )
 	else:
 		checkpoint = ModelCheckpoint(checkpoints_path + model.model_name + '/model.h5')
-		history = model.fit_generator( train_gen , steps_per_epoch  , validation_data=val_gen , validation_steps=200 ,  epochs=epochs , callbacks=[checkpoint])
+		history = model.fit_generator( train_gen , steps_per_epoch  , validation_data=val_gen , validation_steps=200 ,  epochs=10 , callbacks=[checkpoint])
 		import pandas as pd
 		df = pd.DataFrame(history.history)
 		df.to_csv(checkpoints_path + model.model_name + '/training.csv')
